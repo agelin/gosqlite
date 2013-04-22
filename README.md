@@ -1,4 +1,11 @@
-gosqlite
-========
+License
+=======
 
-Go library for SQlite - based on Russ Cox library: https://code.google.com/p/gosqlite/
+The New BSD License covers work by Russ Cox, with the MIT License covering the additional work by Richard B. Lyman.
+
+Intro
+=====
+
+The SQLite Go library as provided by Russ Cox is capable, but very spartan.
+
+This version will expand on the existing code by providing extra functionality that may improve ease of use.
