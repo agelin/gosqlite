@@ -4,6 +4,15 @@
 
 package sqlite
 
+/*
+#include <sqlite3.h>
+*/
+import "C"
+
+func Columns( stmnt *Stmt ) int {
+    return int(C.sqlite3_column_count(stmnt.stmt))
+}
+
 func ScanAllAsString( stmnt *Stmt ) [][]string {
     result := [][]string{}
     for stmnt.Next() {
@@ -13,17 +22,19 @@ func ScanAllAsString( stmnt *Stmt ) [][]string {
 }
 
 func ScanAsString( stmnt *Stmt ) []string {
-    result := []string{}
-    for i:=1; len(result) == 0; i++ {
-        args := make([]string,i)
-        arg_addrs := make([]interface{},i)
-        for i := range args {
-            arg_addrs[i] = &args[i]
-        }
-        scan_err := stmnt.Scan(arg_addrs...)
-        if scan_err == nil {
-            result = args
-        }
+    result := make([]string,Columns(stmnt))
+    addrs := make([]interface{},Columns(stmnt))
+    for i := range result {
+        addrs[i] = &result[i]
     }
+    stmnt.Scan(addrs...) // Ignoring the scan error here... bad!
     return result
+}
+
+func (c *Conn) PrepareAndScanAllAsString( sql string ) ([][]string, error) {
+    stmnt, prep_err := c.Prepare(sql)
+    if prep_err != nil {
+        return nil, prep_err
+    }
+    return ScanAllAsString(stmnt), nil
 }
