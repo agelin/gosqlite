@@ -63,10 +63,12 @@ func (c *Conn) ExecToStrings( sql string ) ([][]string, error) {
     if prep_err != nil {
         return nil, prep_err
     }
+    defer stmnt.Finalize()
     has_rows := stmnt.Next()
     if !has_rows {
-        return nil, errors.New("There are no rows in the result set")
+        return [][]string{}, nil
     }
+    stmnt.Reset()
     return ScanAllAsString(stmnt)
 }
 
@@ -91,6 +93,7 @@ func (c *Conn) ExecFirstAsString( sql string ) (string, error) {
     if prep_err != nil {
         return "", prep_err
     }
+    defer stmnt.Finalize()
     has_rows := stmnt.Next()
     if !has_rows {
         return "", errors.New("There are no rows in the result set")
@@ -107,6 +110,7 @@ func (c *Conn) ExecFirstAsInt( sql string ) (int, error) {
     if prep_err != nil {
         return 0, prep_err
     }
+    defer stmnt.Finalize()
     has_rows := stmnt.Next()
     if !has_rows {
         return 0, errors.New("There are no rows in the result set")
