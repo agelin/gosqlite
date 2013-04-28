@@ -376,14 +376,23 @@ func (s *Stmt) Scan(args ...interface{}) error {
 }
 
 func (s *Stmt) SQL() string {
+  if s == nil {
+    panic("SQL called on nil Statement")
+  }
 	return s.sql + s.args
 }
 
 func (s *Stmt) Nanoseconds() int64 {
+  if s == nil {
+    panic("Nanoseconds called on nil Statement")
+  }
 	return time.Now().Sub(s.t0).Nanoseconds()
 }
 
 func (s *Stmt) Finalize() error {
+  if s == nil {
+    return errors.New("Finalize called on nil Statement")
+  }
 	rv := C.sqlite3_finalize(s.stmt)
 	if rv != 0 {
 		return s.c.error(rv)

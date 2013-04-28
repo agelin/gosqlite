@@ -46,3 +46,30 @@ func TestExecFirstAsInt(t *testing.T) {
   }
 }
 
+func TestFinalizeNilStmnt(t *testing.T) {
+  var stmnt *Stmt = nil
+  err := stmnt.Finalize()
+  if err == nil || err.Error() != "Finalize called on nil Statement" {
+    t.Error("Failed to error or provide a useful error message when Finalize was called on a nil Statement")
+  }
+}
+
+func TestSQLNilStmnt(t *testing.T) {
+  defer func(){
+    if r := recover(); r == nil || r != "SQL called on nil Statement" {
+      t.Error("Failed to panic or provide a useful error message when SQL was called on nil Statement")
+    }
+  }()
+  var stmnt *Stmt = nil
+  stmnt.SQL()
+}
+
+func TestNanosecondsNilStmnt(t *testing.T) {
+  defer func(){
+    if r := recover(); r == nil || r != "Nanoseconds called on nil Statement" {
+      t.Error("Failed to panic or provide a useful error message when Nanoseconds was called on nil Statement")
+    }
+  }()
+  var stmnt *Stmt
+  stmnt.Nanoseconds()
+}
