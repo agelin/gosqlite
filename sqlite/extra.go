@@ -9,6 +9,7 @@ package sqlite
 */
 import "C"
 import "errors"
+import "fmt"
 
 func Columns( stmnt *Stmt ) int {
     return int(C.sqlite3_column_count(stmnt.stmt))
@@ -67,6 +68,22 @@ func (c *Conn) ExecToStrings( sql string ) ([][]string, error) {
         return nil, errors.New("There are no rows in the result set")
     }
     return ScanAllAsString(stmnt)
+}
+
+func (c *Conn) SafeExecToStrings( sql string ) ([][]string, error) {
+  begin_err := c.Exec("BEGIN;")
+  if begin_err != nil {
+    return nil, errors.New(fmt.Sprintf("Failed to begin safe execution: %s", begin_err))
+  }
+  result, result_err := c.ExecToStrings(sql)
+  if result_err != nil {
+    return nil, errors.New(fmt.Sprintf("Failed to execute query: %s", result_err))
+  }
+  rollback_err := c.Exec("ROLLBACK;")
+  if rollback_err != nil {
+    return nil, errors.New(fmt.Sprintf("Failed to rollback safe execution: %s", rollback_err))
+  }
+  return result, nil
 }
 
 func (c *Conn) ExecFirstAsString( sql string ) (string, error) {

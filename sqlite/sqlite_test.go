@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"testing"
+  "fmt"
 )
 
 func open(t *testing.T) *Conn {
@@ -72,4 +73,18 @@ func TestNanosecondsNilStmnt(t *testing.T) {
   }()
   var stmnt *Stmt
   stmnt.Nanoseconds()
+}
+
+func TestSafeExecToStrings(t *testing.T) {
+  db := open(t)
+  db.create(t, "CREATE TABLE test(col)")
+  db.insert(t, "INSERT INTO test VALUES ('works')")
+  _, delete_err := db.SafeExecToStrings("DELETE FROM test")
+  if delete_err != nil {
+    t.Error(fmt.Sprintf("Failed to safely execute delete: %s", delete_err))
+  }
+  result, err := db.ExecToStrings("SELECT * FROM test")
+  if err != nil || result[0][0] != "works" {
+    t.Error(fmt.Sprintf("Failed to execute select after safely executing delete: %s", err))
+  }
 }
