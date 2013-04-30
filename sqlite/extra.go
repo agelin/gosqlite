@@ -11,6 +11,16 @@ import "C"
 import "errors"
 import "fmt"
 
+/*
+func (c *Conn) DropAllTables() {
+   PRAGMA writable_schema = 1;
+   delete from sqlite_master where type='table';
+   pragma writable_schema = 0;
+   vacuum;
+   pragma integrity_check;
+}
+*/
+
 func Columns( stmnt *Stmt ) int {
     return int(C.sqlite3_column_count(stmnt.stmt))
 }
