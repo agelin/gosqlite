@@ -11,15 +11,32 @@ import "C"
 import "errors"
 import "fmt"
 
-/*
-func (c *Conn) DropAllTables() {
-   PRAGMA writable_schema = 1;
-   delete from sqlite_master where type='table';
-   pragma writable_schema = 0;
-   vacuum;
-   pragma integrity_check;
+func (c *Conn) Throwaway(sql string) error {
+	stmnt, prep_err := c.Prepare(sql)
+	if prep_err != nil {
+		return prep_err
+	}
+	defer stmnt.Finalize()
+	exec_err := stmnt.Exec()
+	if exec_err != nil {
+		return exec_err
+	}
+	for stmnt.Next() {
+	}
+	return nil
 }
-*/
+
+func (c *Conn) DropAllTables() error {
+	c.Throwaway("PRAGMA writable_schema = 1")
+	c.Throwaway("DELETE FROM sqlite_master WHERE type='table'")
+	c.Throwaway("PRAGMA writable_schema = 0")
+	c.Throwaway("VACUUM")
+	err := c.Throwaway("PRAGMA integrity_check")
+	if err != nil {
+		return errors.New(fmt.Sprintf("Drop all tables integrity check failed: %s", err))
+	}
+	return nil
+}
 
 func Columns(stmnt *Stmt) int {
 	return int(C.sqlite3_column_count(stmnt.stmt))

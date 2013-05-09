@@ -88,3 +88,20 @@ func TestSafeExecToStrings(t *testing.T) {
 		t.Error(fmt.Sprintf("Failed to execute select after safely executing delete: %s", err))
 	}
 }
+
+func TestDropAllTables(t *testing.T) {
+	db := open(t)
+	db.create(t, "CREATE TABLE test(col)")
+	pre_result, pre_result_err := db.ExecToStrings("SELECT tbl_name FROM sqlite_master")
+	if pre_result_err != nil || pre_result[0][0] != "test" {
+		t.Error("Failed to create test table and select it from sqlite_master")
+	}
+	drop_err := db.DropAllTables()
+	if drop_err != nil {
+		t.Error(fmt.Sprintf("Failed to drop all tables: %s", drop_err))
+	}
+	post_result, post_result_err := db.ExecToStrings("SELECT tbl_name FROM sqlite_master")
+	if post_result_err != nil || len(post_result) != 0 {
+		t.Error(fmt.Sprintf("Tables that should have been dropped weren't: %#v", post_result))
+	}
+}
