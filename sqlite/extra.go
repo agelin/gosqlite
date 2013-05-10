@@ -11,39 +11,32 @@ import "C"
 import "errors"
 import "fmt"
 
-func (c *Conn) Throwaway(sql string) error {
-	stmnt, prep_err := c.Prepare(sql)
-	if prep_err != nil {
-		return prep_err
+func (c *Conn) Throwaway(sql string) {
+    stmnt, err := c.Prepare(sql)
+	if err != nil {
+		panic(err)
 	}
 	defer stmnt.Finalize()
-	exec_err := stmnt.Exec()
-	if exec_err != nil {
-		return exec_err
+	if err = stmnt.Exec(); err != nil {
+		panic(err)
 	}
-	for stmnt.Next() {
-	}
-	return nil
+	for stmnt.Next() {}
 }
 
-func (c *Conn) DropAllTables() error {
+func (c *Conn) DropAllTables() {
 	c.Throwaway("PRAGMA writable_schema = 1")
 	c.Throwaway("DELETE FROM sqlite_master WHERE type='table'")
 	c.Throwaway("PRAGMA writable_schema = 0")
 	c.Throwaway("VACUUM")
-	err := c.Throwaway("PRAGMA integrity_check")
-	if err != nil {
-		return errors.New(fmt.Sprintf("Drop all tables integrity check failed: %s", err))
-	}
-	return nil
+	c.Throwaway("PRAGMA integrity_check")
 }
 
 func Columns(stmnt *Stmt) int {
 	return int(C.sqlite3_column_count(stmnt.stmt))
 }
 
-// ScanAllAsString will return all rows if error is nil.
-// If error is not nil, the rows successfully scanned up to
+// ScanAllAsString will return all rows if there are no errors.
+// If there are errors the rows successfully scanned up to
 // that point are the only rows returned.
 func ScanAllAsString(stmnt *Stmt) ([][]string, error) {
 	result := [][]string{}

@@ -5,32 +5,15 @@ import (
 	"testing"
 )
 
-func open(t *testing.T) *Conn {
-	db, err := Open(":memory:")
-	if err != nil {
-		t.Error("Failed to open memory database")
-	}
-	return db
-}
-
-func (db *Conn) create(t *testing.T, sql string) {
-	err := db.Exec(sql)
-	if err != nil {
-		t.Error("Failed to create")
-	}
-}
-
-func (db *Conn) insert(t *testing.T, sql string) {
-	err := db.Exec(sql)
-	if err != nil {
-		t.Error("Failed to insert")
-	}
-}
-
 func TestExecFirstAsString(t *testing.T) {
-	db := open(t)
-	db.create(t, "CREATE TABLE test (col)")
-	db.insert(t, "INSERT INTO test VALUES ('value')")
+    defer func(){
+        if r := recover(); r != nil {
+            t.Error(fmt.Sprintf("Failed to exec first as string: %s", r))
+        }
+    }()
+	db, _ := Open(":memory:")
+	db.Throwaway("CREATE TABLE test (col)")
+	db.Throwaway("INSERT INTO test VALUES ('value')")
 	result, err := db.ExecFirstAsString("SELECT * FROM test")
 	if err != nil || result != "value" {
 		t.Error("Failed to exec first as string")
@@ -38,9 +21,14 @@ func TestExecFirstAsString(t *testing.T) {
 }
 
 func TestExecFirstAsInt(t *testing.T) {
-	db := open(t)
-	db.create(t, "CREATE TABLE test (col)")
-	db.insert(t, "INSERT INTO test VALUES (1)")
+    defer func(){
+        if r := recover(); r != nil {
+            t.Error(fmt.Sprintf("Failed to exec first as string: %s", r))
+        }
+    }()
+	db, _ := Open(":memory:")
+	db.Throwaway("CREATE TABLE test (col)")
+	db.Throwaway("INSERT INTO test VALUES (1)")
 	result, err := db.ExecFirstAsInt("SELECT * FROM test")
 	if err != nil || result != 1 {
 		t.Error("Failed to exec first as int")
@@ -76,9 +64,14 @@ func TestNanosecondsNilStmnt(t *testing.T) {
 }
 
 func TestSafeExecToStrings(t *testing.T) {
-	db := open(t)
-	db.create(t, "CREATE TABLE test(col)")
-	db.insert(t, "INSERT INTO test VALUES ('works')")
+    defer func(){
+        if r := recover(); r != nil {
+            t.Error(fmt.Sprintf("Failed to exec first as string: %s", r))
+        }
+    }()
+	db, _ := Open(":memory:")
+	db.Throwaway("CREATE TABLE test(col)")
+	db.Throwaway("INSERT INTO test VALUES ('works')")
 	_, delete_err := db.SafeExecToStrings("DELETE FROM test")
 	if delete_err != nil {
 		t.Error(fmt.Sprintf("Failed to safely execute delete: %s", delete_err))
@@ -90,16 +83,18 @@ func TestSafeExecToStrings(t *testing.T) {
 }
 
 func TestDropAllTables(t *testing.T) {
-	db := open(t)
-	db.create(t, "CREATE TABLE test(col)")
+    defer func(){
+        if r := recover(); r != nil {
+            t.Error(fmt.Sprintf("Failed to drop all tables: %s", r))
+        }
+    }()
+	db, _ := Open(":memory:")
+	db.Throwaway("CREATE TABLE test(col)")
 	pre_result, pre_result_err := db.ExecToStrings("SELECT tbl_name FROM sqlite_master")
 	if pre_result_err != nil || pre_result[0][0] != "test" {
 		t.Error("Failed to create test table and select it from sqlite_master")
 	}
-	drop_err := db.DropAllTables()
-	if drop_err != nil {
-		t.Error(fmt.Sprintf("Failed to drop all tables: %s", drop_err))
-	}
+	db.DropAllTables()
 	post_result, post_result_err := db.ExecToStrings("SELECT tbl_name FROM sqlite_master")
 	if post_result_err != nil || len(post_result) != 0 {
 		t.Error(fmt.Sprintf("Tables that should have been dropped weren't: %#v", post_result))
