@@ -86,7 +86,7 @@ func (c *Conn) ExecToStrings(sql string) ([][]string, error) {
 	defer stmnt.Finalize()
 	has_rows := stmnt.Next()
 	if !has_rows {
-		return [][]string{}, nil
+		return [][]string{}, stmnt.Error()
 	}
 	stmnt.Reset()
 	return ScanAllAsString(stmnt)
