@@ -99,6 +99,10 @@ func (c *Conn) SafeExecToStrings(sql string) ([][]string, error) {
 	}
 	result, result_err := c.ExecToStrings(sql)
 	if result_err != nil {
+        early_rollback_err := c.Exec("ROLLBACK;")
+        if early_rollback_err != nil {
+            return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
+        }
 		return nil, errors.New(fmt.Sprintf("Failed to execute query: %s", result_err))
 	}
 	rollback_err := c.Exec("ROLLBACK;")
