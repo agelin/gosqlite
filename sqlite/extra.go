@@ -49,6 +49,17 @@ func ScanAllAsString(stmnt *Stmt) ([][]string, error) {
 	}
 	return result, nil
 }
+func ScanAllAsStringMap(stmnt *Stmt) ([]map[string]string, error) {
+	result := []map[string]string{}
+	for stmnt.Next() {
+		row, err := ScanAsMap(stmnt)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, row)
+	}
+	return result, nil
+}
 
 func ScanAsString(stmnt *Stmt) ([]string, error) {
 	result := make([]string, Columns(stmnt))
@@ -60,6 +71,22 @@ func ScanAsString(stmnt *Stmt) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+func ScanAsMap(stmnt *Stmt) (map[string]string, error) {
+	temp_result := make([]string, Columns(stmnt))
+	addrs := make([]interface{}, Columns(stmnt))
+	for i := range temp_result {
+		addrs[i] = &temp_result[i]
+	}
+	err := stmnt.Scan(addrs...)
+	if err != nil {
+		return nil, err
+	}
+    result := map[string]string{}
+    for i, v := range temp_result {
+        result[C.GoString(C.sqlite3_column_name(stmnt.stmt, C.int(i)))] = v
+    }
 	return result, nil
 }
 
@@ -91,6 +118,19 @@ func (c *Conn) ExecToStrings(sql string) ([][]string, error) {
 	stmnt.Reset()
 	return ScanAllAsString(stmnt)
 }
+func (c *Conn) ExecToStringMaps(sql string) ([]map[string]string, error) {
+	stmnt, prep_err := c.Prepare(sql)
+	if prep_err != nil {
+		return nil, prep_err
+	}
+	defer stmnt.Finalize()
+	has_rows := stmnt.Next()
+	if !has_rows {
+		return []map[string]string{}, stmnt.Error()
+	}
+	stmnt.Reset()
+	return ScanAllAsStringMap(stmnt)
+}
 
 func (c *Conn) SafeExecToStrings(sql string) ([][]string, error) {
 	begin_err := c.Exec("BEGIN;")
@@ -98,6 +138,26 @@ func (c *Conn) SafeExecToStrings(sql string) ([][]string, error) {
 		return nil, errors.New(fmt.Sprintf("Failed to begin safe execution: %s", begin_err))
 	}
 	result, result_err := c.ExecToStrings(sql)
+	if result_err != nil {
+        early_rollback_err := c.Exec("ROLLBACK;")
+        if early_rollback_err != nil {
+            return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
+        }
+		return nil, errors.New(fmt.Sprintf("Failed to execute query: %s", result_err))
+	}
+	rollback_err := c.Exec("ROLLBACK;")
+	if rollback_err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to rollback safe execution: %s", rollback_err))
+	}
+	return result, nil
+}
+
+func (c *Conn) SafeExecToStringMaps(sql string) ([]map[string]string, error) {
+	begin_err := c.Exec("BEGIN;")
+	if begin_err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to begin safe execution: %s", begin_err))
+	}
+	result, result_err := c.ExecToStringMaps(sql)
 	if result_err != nil {
         early_rollback_err := c.Exec("ROLLBACK;")
         if early_rollback_err != nil {

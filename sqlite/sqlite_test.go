@@ -82,6 +82,32 @@ func TestSafeExecToStrings(t *testing.T) {
 	}
 }
 
+func TestSafeExecToStringMaps(t *testing.T) {
+    defer func(){
+        if r := recover(); r != nil {
+            t.Error(fmt.Sprintf("Failed to exec first as string: %s", r))
+        }
+    }()
+	db, _ := Open(":memory:")
+	db.Throwaway("CREATE TABLE test(col)")
+	db.Throwaway("INSERT INTO test VALUES ('works')")
+	_, delete_err := db.SafeExecToStrings("DELETE FROM test")
+	if delete_err != nil {
+		t.Error(fmt.Sprintf("Failed to safely execute delete: %s", delete_err))
+	}
+	result, err := db.ExecToStringMaps("SELECT * FROM test")
+	if err != nil {
+		t.Error(fmt.Sprintf("Failed to execute select after safely executing delete: %s", err))
+	}
+    val, has_key := result[0]["col"]
+    if !has_key {
+		t.Error("Failed to execute select with key after safely executing delete")
+    }
+    if val != "works" {
+		t.Error("Failed to execute select with val after safely executing delete")
+    }
+}
+
 func TestDropAllTables(t *testing.T) {
     defer func(){
         if r := recover(); r != nil {
