@@ -12,7 +12,7 @@ import "errors"
 import "fmt"
 
 func (c *Conn) Throwaway(sql string) {
-    stmnt, err := c.Prepare(sql)
+	stmnt, err := c.Prepare(sql)
 	if err != nil {
 		panic(err)
 	}
@@ -20,7 +20,8 @@ func (c *Conn) Throwaway(sql string) {
 	if err = stmnt.Exec(); err != nil {
 		panic(err)
 	}
-	for stmnt.Next() {}
+	for stmnt.Next() {
+	}
 }
 
 func (c *Conn) DropAllTables() {
@@ -83,10 +84,10 @@ func ScanAsMap(stmnt *Stmt) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-    result := map[string]string{}
-    for i, v := range temp_result {
-        result[C.GoString(C.sqlite3_column_name(stmnt.stmt, C.int(i)))] = v
-    }
+	result := map[string]string{}
+	for i, v := range temp_result {
+		result[C.GoString(C.sqlite3_column_name(stmnt.stmt, C.int(i)))] = v
+	}
 	return result, nil
 }
 
@@ -139,10 +140,10 @@ func (c *Conn) SafeExecToStrings(sql string) ([][]string, error) {
 	}
 	result, result_err := c.ExecToStrings(sql)
 	if result_err != nil {
-        early_rollback_err := c.Exec("ROLLBACK;")
-        if early_rollback_err != nil {
-            return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
-        }
+		early_rollback_err := c.Exec("ROLLBACK;")
+		if early_rollback_err != nil {
+			return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
+		}
 		return nil, errors.New(fmt.Sprintf("Failed to execute query: %s", result_err))
 	}
 	rollback_err := c.Exec("ROLLBACK;")
@@ -159,10 +160,10 @@ func (c *Conn) SafeExecToStringMaps(sql string) ([]map[string]string, error) {
 	}
 	result, result_err := c.ExecToStringMaps(sql)
 	if result_err != nil {
-        early_rollback_err := c.Exec("ROLLBACK;")
-        if early_rollback_err != nil {
-            return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
-        }
+		early_rollback_err := c.Exec("ROLLBACK;")
+		if early_rollback_err != nil {
+			return nil, errors.New(fmt.Sprintf("Failed to rollback after failing to execute query: %s, %s", result_err, early_rollback_err))
+		}
 		return nil, errors.New(fmt.Sprintf("Failed to execute query: %s", result_err))
 	}
 	rollback_err := c.Exec("ROLLBACK;")
