@@ -6,12 +6,62 @@ package sqlite
 
 /*
 #include <sqlite3.h>
+#include <stdlib.h>
+
+
+
 */
 import "C"
 import "errors"
 import "fmt"
 import "log"
 import "unsafe"
+
+func ScanAsString(stmnt *Stmt) ([]string, error) {
+	result := make([]string, Columns(stmnt))
+    for i := range result {
+        p := C.sqlite3_column_text(stmnt.stmt, C.int(i))
+        n := C.sqlite3_column_bytes(stmnt.stmt, C.int(i))
+        temp := C.GoStringN((*C.char)(unsafe.Pointer(p)), n)
+        if len(temp) == 0 {
+        }
+        result[i] = temp
+        //result[i] = string(make([]byte, n))
+        //result[i] = "bob"
+    }
+	return result, nil
+}
+
+// ScanAllAsString will return all rows if there are no errors.
+// If there are errors the rows successfully scanned up to
+// that point are the only rows returned.
+func ScanAllAsString(stmnt *Stmt) ([][]string, error) {
+	result := [][]string{}
+	for stmnt.Next() {
+		row, err := ScanAsString(stmnt)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, row)
+	}
+	return result, nil
+}
+
+// See ScanAllAsString for an explanation of how possible errors
+// affect the rows returned
+func (c *Conn) ExecToStrings(sql string) ([][]string, error) {
+	stmnt, prep_err := c.Prepare(sql)
+	if prep_err != nil {
+		return nil, prep_err
+	}
+	defer stmnt.Finalize()
+	has_rows := stmnt.Next()
+	if !has_rows {
+		return [][]string{}, stmnt.Error()
+	}
+	stmnt.Reset()
+	return ScanAllAsString(stmnt)
+}
 
 func (c *Conn) Throwaway(sql string) {
 	stmnt, err := c.Prepare(sql)
@@ -87,21 +137,6 @@ func Columns(stmnt *Stmt) int {
 	return int(C.sqlite3_column_count(stmnt.stmt))
 }
 
-// ScanAllAsString will return all rows if there are no errors.
-// If there are errors the rows successfully scanned up to
-// that point are the only rows returned.
-func ScanAllAsString(stmnt *Stmt) ([][]string, error) {
-    log.Println("Scanning ALL as string")
-	result := [][]string{}
-	for stmnt.Next() {
-		row, err := ScanAsString(stmnt)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, row)
-	}
-	return result, nil
-}
 func ScanAllAsStringMap(stmnt *Stmt) ([]map[string]string, error) {
 	result := []map[string]string{}
 	for stmnt.Next() {
@@ -114,18 +149,6 @@ func ScanAllAsStringMap(stmnt *Stmt) ([]map[string]string, error) {
 	return result, nil
 }
 
-func ScanAsString(stmnt *Stmt) ([]string, error) {
-    log.Println("Scanning as string")
-	result := make([]string, Columns(stmnt))
-    for i := range result {
-        n := C.sqlite3_column_bytes(stmnt.stmt, C.int(i))
-        p := C.sqlite3_column_text(stmnt.stmt, C.int(i))
-        log.Println("Found bytes:",n)
-        s := string(C.GoBytes((unsafe.Pointer(p)), n))
-        result[i] = s
-    }
-	return result, nil
-}
 func ScanAsMap(stmnt *Stmt) (map[string]string, error) {
 	temp_result := make([]string, Columns(stmnt))
 	addrs := make([]interface{}, Columns(stmnt))
@@ -156,21 +179,6 @@ func ScanAsInt(stmnt *Stmt) ([]int, error) {
 	return result, nil
 }
 
-// See ScanAllAsString for an explanation of how possible errors
-// affect the rows returned
-func (c *Conn) ExecToStrings(sql string) ([][]string, error) {
-	stmnt, prep_err := c.Prepare(sql)
-	if prep_err != nil {
-		return nil, prep_err
-	}
-	defer stmnt.Finalize()
-	has_rows := stmnt.Next()
-	if !has_rows {
-		return [][]string{}, stmnt.Error()
-	}
-	stmnt.Reset()
-	return ScanAllAsString(stmnt)
-}
 func (c *Conn) ExecToStringMaps(sql string) ([]map[string]string, error) {
 	stmnt, prep_err := c.Prepare(sql)
 	if prep_err != nil {
