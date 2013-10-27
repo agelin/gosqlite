@@ -10,6 +10,8 @@ package sqlite
 import "C"
 import "errors"
 import "fmt"
+import "log"
+import "unsafe"
 
 func (c *Conn) Throwaway(sql string) {
 	stmnt, err := c.Prepare(sql)
@@ -23,6 +25,55 @@ func (c *Conn) Throwaway(sql string) {
 	for stmnt.Next() {
 	}
 }
+/*
+func (c *Conn) RestrictedDump() ([]byte, error) {
+//	tableSql, tableSql_err := c.ExecToStrings("SELECT sql FROM sqlite_master WHERE type='table'")
+//    if tableSql_err != nil {
+//        return nil, tableSql_err
+//    }
+    // Reduce each row's single value to a series of strings
+	tables, tables_err := c.ExecToStrings("SELECT name FROM sqlite_master WHERE type='table'")
+    if tables_err != nil {
+        return nil, tables_err
+    }
+    results := []byte{}
+    for _, tableRow := range tables {
+        table := tableRow[0]
+        fmt.Println("Gathering data from table:", table)
+        results = append( results, "INSERT INTO " + table)
+        // Get column names... from select * limit 1... then result[C.GoString(C.sqlite3_column_name(stmnt.stmt, C.int(i)))] = v
+        rows, rows_err := c.ExecToStringMaps("SELECT * FROM "+table)
+        if rows_err != nil {
+            return nil, rows_err
+        }
+        for _, row := range rows {
+            fmt.Println("\trow:", row)
+            for k, v := range row {
+                fmt.Println("\t\t", k, ":", v)
+            }
+        }
+        results = append(results, ";")
+    }
+    return nil, nil
+
+//'insert into ' + t + ' (' + column_names_in_csv + ') values (' + values_in_csv + ')'
+*/
+
+/*
+	stmnt, prep_err := c.Prepare(sql)
+	if prep_err != nil {
+		return nil, prep_err
+	}
+	defer stmnt.Finalize()
+	has_rows := stmnt.Next()
+	if !has_rows {
+		return [][]string{}, stmnt.Error()
+	}
+	stmnt.Reset()
+	return ScanAllAsString(stmnt)
+*/
+
+//}
 
 func (c *Conn) DropAllTables() {
 	c.Throwaway("PRAGMA writable_schema = 1")
@@ -40,6 +91,7 @@ func Columns(stmnt *Stmt) int {
 // If there are errors the rows successfully scanned up to
 // that point are the only rows returned.
 func ScanAllAsString(stmnt *Stmt) ([][]string, error) {
+    log.Println("Scanning ALL as string")
 	result := [][]string{}
 	for stmnt.Next() {
 		row, err := ScanAsString(stmnt)
@@ -63,15 +115,15 @@ func ScanAllAsStringMap(stmnt *Stmt) ([]map[string]string, error) {
 }
 
 func ScanAsString(stmnt *Stmt) ([]string, error) {
+    log.Println("Scanning as string")
 	result := make([]string, Columns(stmnt))
-	addrs := make([]interface{}, Columns(stmnt))
-	for i := range result {
-		addrs[i] = &result[i]
-	}
-	err := stmnt.Scan(addrs...)
-	if err != nil {
-		return nil, err
-	}
+    for i := range result {
+        n := C.sqlite3_column_bytes(stmnt.stmt, C.int(i))
+        p := C.sqlite3_column_text(stmnt.stmt, C.int(i))
+        log.Println("Found bytes:",n)
+        s := string(C.GoBytes((unsafe.Pointer(p)), n))
+        result[i] = s
+    }
 	return result, nil
 }
 func ScanAsMap(stmnt *Stmt) (map[string]string, error) {
